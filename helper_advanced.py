@@ -51,21 +51,3 @@ def invariantmass4l(tree, i, j, k, l):
     lep4.SetPtEtaPhiM(tree._lPt[l],tree._lEta[l],tree._lPhi[l],0)
     H = lep1+lep2+lep3+lep4
     return H.M()
-
-def savehisto(outputfile, histo, histoname, logy=False, extraname="", extension="pdf"):
-    """
-    Draw histo
-    """
-    c = ROOT.TCanvas(histoname, histoname, 600, 600)
-    if "2D" in histoname:
-        c.SetLogz(True)
-        histo.Draw("colz")
-    else:
-        histo.Draw()
-    c.SetLogy(logy)
-    if logy:
-        extraname += "_nolog"
-    c.SaveAs("pdfs/"+histoname+extraname+"."+extension)
-    outputfile.cd()
-    c.Write()
-    c.Close()
