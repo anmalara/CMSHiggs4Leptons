@@ -34,7 +34,7 @@ def savehisto(outputfile, histo, histoname, logy=False, extraname="", extension=
     c.SetLogy(logy)
     if not logy:
         extraname += "_nolog"
-    c.SaveAs("pdfs/"+histoname+extraname+"."+extension)
+    c.SaveAs("pdfs_data/"+histoname+extraname+"."+extension)
     outputfile.cd()
     c.Write()
     c.Close()

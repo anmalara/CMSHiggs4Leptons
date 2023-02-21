@@ -1,6 +1,6 @@
 import ROOT
 # to be used to avoid display intermediate plotting results
-ROOT.gROOT.SetBatch(ROOT.kTRUE)
+# ROOT.gROOT.SetBatch(ROOT.kTRUE)
 
 
 def isgoodlepton(tree, i):

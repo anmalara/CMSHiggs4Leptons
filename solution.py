@@ -1,4 +1,4 @@
-import os,sys, math, ROOT
+import os,sys, math, itertools, ROOT
 from array import array
 import numpy as np
 from collections import OrderedDict
@@ -6,11 +6,13 @@ from collections import OrderedDict
 #Importing a helper file where some functions are defined
 from helper import *
 from helper_advanced import *
+ROOT.gROOT.SetBatch(ROOT.kTRUE)
 
 debug=False
-doIDs=True
-doPTs=10
+doIDs=False
+doPTs=12
 do4Lep=True
+weight = 1
 
 selections = OrderedDict([
     ('nocuts', None),
@@ -28,18 +30,18 @@ def recreatehistograms():
         del hists[key]
     hists['cutflow'] = ROOT.TH1F("cutflow",";cutflow;Events", len(selections), -0.5, len(selections)-0.5)
     for ind,sel in enumerate(selections.keys()):
-        hists[str(ind)+'_'+sel+'_nEvents'] = ROOT.TH1F(sel+"nEvents", ";Counting experiment;Events", 1, -0.5, 1.5)
+        # hists[str(ind)+'_'+sel+'_nEvents'] = ROOT.TH1F(sel+"nEvents", ";Counting experiment;Events", 1, -0.5, 1.5)
         # hists[str(ind)+'_'+sel+'_npv'] = ROOT.TH1F(sel+"hist_NPV", ";Number of reconstructed vertices;Events", 100, 0, 100)
         # hists['dR_Lep'] = ROOT.TH1F("dR_LEP",";#Delta R(lep_i,lep_j);Events", 100, 0, 5)
         for lep in ['Muo','Ele','Lep']:
-            hists[str(ind)+'_'+sel+'_n'+lep] = ROOT.TH1F(sel+"n"+lep,";n"+lep+";Events", 11, -0.5, 10.5)
-            hists[str(ind)+'_'+sel+'_pt'+lep] = ROOT.TH1F(sel+"pt"+lep,";p_{T}^{"+lep+"};Events", 50, 0, 200)
-            # hists[str(ind)+'_'+sel+'_eta'+lep] = ROOT.TH1F(sel+"_eta"+lep,";#eta^{"+lep+"};Events", 60, -3.0, 3.0)
-            # hists[str(ind)+'_'+sel+'_phi'+lep] = ROOT.TH1F(sel+"_phi"+lep,";#phi^{"+lep+"};Events", 70, -3.5, 3.5)
-            hists[str(ind)+'_'+sel+'_id'+lep] = ROOT.TH1F(sel+"_id"+lep,";passID;Events", 2, -0.5, 1.5)
-            # hists[str(ind)+'_'+sel+'_dR'+lep] = ROOT.TH1F(sel+"dR"+lep,";#Delta R("+lep+",lep_j);Events", 100, 0, 5)
+        #     hists[str(ind)+'_'+sel+'_n'+lep] = ROOT.TH1F(sel+"n"+lep,";n"+lep+";Events", 11, -0.5, 10.5)
+        #     hists[str(ind)+'_'+sel+'_pt'+lep] = ROOT.TH1F(sel+"pt"+lep,";p_{T}^{"+lep+"};Events", 50, 0, 200)
+        #     hists[str(ind)+'_'+sel+'_eta'+lep] = ROOT.TH1F(sel+"_eta"+lep,";#eta^{"+lep+"};Events", 60, -3.0, 3.0)
+        #     hists[str(ind)+'_'+sel+'_phi'+lep] = ROOT.TH1F(sel+"_phi"+lep,";#phi^{"+lep+"};Events", 70, -3.5, 3.5)
+        #     hists[str(ind)+'_'+sel+'_id'+lep] = ROOT.TH1F(sel+"_id"+lep,";passID;Events", 2, -0.5, 1.5)
+            hists[str(ind)+'_'+sel+'_dR'+lep] = ROOT.TH1F(sel+"dR"+lep,";#Delta R("+lep+",lep_j);Events", 100, 0, 5)
         # if ind<4: continue
-        hists[str(ind)+'_'+sel+'_massH'] = ROOT.TH1F(sel+"hist_massH",";Four Lepton Invariant Mass;Events", 125, 0, 500)
+        hists[str(ind)+'_'+sel+'_massH'] = ROOT.TH1F(sel+"hist_massH",";Four Lepton Invariant Mass;Events", 250, 0, 500)
         hists[str(ind)+'_'+sel+'_massZ1'] = ROOT.TH1F(sel+"_massZ1",";M(Z1);Events", 250, 0, 500)
         hists[str(ind)+'_'+sel+'_massZ2'] = ROOT.TH1F(sel+"_massZ2",";M(Z2);Events", 250, 0, 500)
         hists[str(ind)+'_'+sel+'_massJpsi'] = ROOT.TH1F(sel+"_massjpsi",";M(ll);Events", 200, 0, 10)
@@ -49,60 +51,85 @@ def recreatehistograms():
         # hists[str(ind)+'_'+sel+'_dRZ1Z2'] = ROOT.TH1F(sel+"_dRZ1Z2",";#Delta R(Z_1,Z_2);Events", 100, 0, 5)
 
 def fillhist(events,selections, sel):
-    print(sel,len(events))
+    global weight
+    print(sel, len(events))
     index = list(selections.keys()).index(sel)
     hname = str(index)+'_'+sel
     hists['cutflow'].SetBinContent(index+1,len(events))
     for ev in events:
-        hists[hname+'_nEvents'].Fill(1)
-        # hists[hname+'_npv'].Fill(ev['npv'])
-        for flav in ['Muo','Ele','Lep']:
-            nLep = ev["n"+flav]
-            hists[hname+'_n'+flav].Fill(nLep)
-        for ind in range(0,10):
-            if not "lep"+str(ind) in ev: continue
-            lep = ev["lep"+str(ind)]
-            flavor = ev["lep"+str(ind)+"flavor"]
-            for flav in ['Muo','Ele','Lep']:
-                if flav=='Muo' and abs(flavor)!=13: continue
-                if flav=='Ele' and abs(flavor)!=11: continue
-                hists[hname+'_pt'+flav].Fill(lep.Pt())
-                # hists[hname+'_eta'+flav].Fill(lep.Eta())
-                # hists[hname+'_phi'+flav].Fill(lep.Phi())
-                hists[hname+'_id'+flav].Fill(ev["lep"+str(ind)+"passID"])
+        # hists[hname+'_nEvents'].Fill(1,weight)
+        # hists[hname+'_npv'].Fill(ev['npv'],weight)
+        # for flav in ['Muo','Ele','Lep']:
+        #     nLep = ev["n"+flav]
+        #     hists[hname+'_n'+flav].Fill(nLep,weight)
+        loop_over = range(0,10)
+        if "allPairs" in ev:
+            loop_over= list(set(itertools.chain.from_iterable(ev["allPairs"])))
+            # loop_over= ev["allPairs"][0]
+        for ind1 in loop_over:
+            if not "lep"+str(ind1) in ev: continue
+            lep1 = ev["lep"+str(ind1)]
+            flavor1 = ev["lep"+str(ind1)+"flavor"]
+            flav = 'Ele' if abs(flavor1)==11 else 'Muo'
+            for ind2 in loop_over:
+                if ind2==ind1: continue
+                if not "lep"+str(ind2) in ev: continue
+                lep2 = ev["lep"+str(ind2)]
+                flavor2 = ev["lep"+str(ind2)+"flavor"]
+                if (flavor2==flavor1): continue
+                if ((lep1+lep2).M()<12): continue
+                dr = lep1.DeltaR(lep2)
+                if (abs(flavor2)!=abs(flavor1)):
+                    hists[hname+'_dR'+'Lep'].Fill(dr,weight)
+                else:
+                    hists[hname+'_dR'+flav].Fill(dr,weight)
+            # for flav in ['Muo','Ele','Lep']:
+        #         if flav=='Muo' and abs(flavor)!=13: continue
+        #         if flav=='Ele' and abs(flavor)!=11: continue
+        #         hists[hname+'_pt'+flav].Fill(lep.Pt(),weight)
+        #         hists[hname+'_eta'+flav].Fill(lep.Eta(),weight)
+        #         hists[hname+'_phi'+flav].Fill(lep.Phi(),weight)
+        #         hists[hname+'_id'+flav].Fill(ev["lep"+str(ind)+"passID"],weight)
         # if index<4: continue
-        hists[hname+'_massH'].Fill(ev['H'].M())
-        hists[hname+'_massZ1'].Fill(ev['Z1'].M())
-        hists[hname+'_massZ2'].Fill(ev['Z2'].M())
-        hists[hname+'_massJpsi'].Fill(ev['Z1'].M())
-        hists[hname+'_massJpsi'].Fill(ev['Z2'].M())
-        # hists[hname+'_massZ1_vs_Z2'].Fill(ev['Z1'].M(),ev['Z2'].M())
-        # hists[hname+'_dRZ1Z2'].Fill(ev['Z1'].DeltaR(ev['Z2']))
+        hists[hname+'_massH'].Fill(ev['H'].M(),weight)
+        hists[hname+'_massZ1'].Fill(ev['Z1'].M(),weight)
+        hists[hname+'_massZ2'].Fill(ev['Z2'].M(),weight)
+        hists[hname+'_massJpsi'].Fill(ev['Z1'].M(),weight)
+        hists[hname+'_massJpsi'].Fill(ev['Z2'].M(),weight)
+        # hists[hname+'_massZ1_vs_Z2'].Fill(ev['Z1'].M(),ev['Z2'].M(),weight)
+        # hists[hname+'_dRZ1Z2'].Fill(ev['Z1'].DeltaR(ev['Z2']),weight)
         # if 'allPairs' in ev:
         #     indices = ev["allPairs"][0].copy()
-        #     hists[hname+'_dRZ1'].Fill(ev["lep"+indices[0]].DeltaR(ev["lep"+indices[1]]))
-        #     hists[hname+'_dRZ2'].Fill(ev["lep"+indices[2]].DeltaR(ev["lep"+indices[3]]))
+        #     hists[hname+'_dRZ1'].Fill(ev["lep"+indices[0]].DeltaR(ev["lep"+indices[1]]),weight)
+        #     hists[hname+'_dRZ2'].Fill(ev["lep"+indices[2]].DeltaR(ev["lep"+indices[3]]),weight)
 
 def main(category):
+    global weight
     os.system('mkdir -p pdfs')
     recreatehistograms()
     # inputfile = ROOT.TFile("events4leptonsCMS_FullRun2.root","READ")
     # tree = inputfile.Get("tree")
-    inputfile = ROOT.TFile("Run2data_SkimFourLeptons.root","READ")
+    # inputfile = ROOT.TFile("MC_signal.root","READ")
+    inputfile = ROOT.TFile("data.root","READ")
     tree = inputfile.Get("ntuplizer/tree")
-
     outputfile = ROOT.TFile("output.root","RECREATE")
+    
+    if 'MC' in inputfile.GetName():
+        br = 0.026*0.1*0.1
+        weight = 55.*br*137./3706044 #(xsec*BR*Lumi/NGen)
+        
     nentries = tree.GetEntries()
+    # nentries = 10000
+    if 'MC' in inputfile.GetName():
+        weight *= 1.*tree.GetEntries()/nentries
     print("Number of entries: ", nentries)
     ntot = 0
     n4muo = 0
     n4ele = 0
     n2m2e = 0
-    #Loop over entries
-    # min_pt = 1000
+    
     events = []
-    for i in range(0, tree.GetEntries()):
-    # for i in range(0, 50000):
+    for i in range(0, nentries):
         #Load entry number i
         tree.GetEntry(i)
         event = {}
@@ -141,7 +168,7 @@ def main(category):
 
     # # TO BE IMPROVED TODO
     for ev in events.copy():
-        if do4Lep and ev['nLep']!=selections["4Lep"]: events.remove(ev)
+        if do4Lep and ev['nLep']<selections["4Lep"]: events.remove(ev)
     fillhist(events, selections, "4Lep")
 
     for ev in events.copy():
@@ -154,9 +181,9 @@ def main(category):
     eff_H_ref = 0
     eff_OS_ref = 0
     for ev in events:
-        if ev["H"].M()>80  and ev["H"].M()<100: eff_Z_ref+=1
-        if ev["H"].M()>120 and ev["H"].M()<130: eff_H_ref+=1
-        if ev["H"].M()>200 and ev["H"].M()<501: eff_OS_ref+=1
+        if ev["H"].M()>80  and ev["H"].M()<100: eff_Z_ref+=weight
+        if ev["H"].M()>120 and ev["H"].M()<130: eff_H_ref+=weight
+        if ev["H"].M()>200 and ev["H"].M()<501: eff_OS_ref+=weight
     print ("Ref Eff", category, eff_Z_ref, eff_H_ref, eff_OS_ref)
 
     def PassLepton(ev,ind):
@@ -166,30 +193,38 @@ def main(category):
         lep_id = event["lep"+str(ind)+"passID"]
         # if doIDs and abs(lep_fl)==13 and not lep_id: pass_=False
         # if doPTs>0 and abs(lep_fl)==11 and lep_pt<doPTs: pass_=False
-        if doPTs>0 and lep_pt<doPTs: pass_=False
+        # if doPTs>0 and lep_pt<doPTs: pass_=False
         return pass_
 
     for ev in events:
         ev["allPairs"] = []
         for i in range(0,10):
             if not "lep"+str(i) in ev: continue
-            if not PassLepton(ev,i): continue
+            # if not PassLepton(ev,i): continue
             for j in range(0,10):
                 if j<=i: continue
                 if not "lep"+str(j) in ev: continue
-                if not PassLepton(ev,j): continue
+                # if not PassLepton(ev,j): continue
                 if not SameFlavOppCharge(ev,i,j):continue
                 for k in range(0,10):
                     if not "lep"+str(k) in ev: continue
-                    if not PassLepton(ev,k): continue
+                    # if not PassLepton(ev,k): continue
                     if k==i or k==j: continue
                     for l in range(0,10):
                         if l==i or l==j or l<=k: continue
                         if not "lep"+str(l) in ev: continue
-                        if not PassLepton(ev,l): continue
+                        # if not PassLepton(ev,l): continue
                         if not SameFlavOppCharge(ev,k,l):continue
                         if any([str(i),str(j),str(k),str(l)]==x or [str(k),str(l),str(i),str(j)]== x for x in ev["allPairs"]): continue
                         if category=="2M2E" and abs(ev["lep"+str(i)+"flavor"])==abs(ev["lep"+str(k)+"flavor"]): continue
+                        lep_pts = list(reversed(sorted([ev["lep"+str(ind)].Pt() for ind in [i,j,k,l]])))
+                        lep_flav = [ev["lep"+str(ind)+"flavor"] for ind in [i,j,k,l]]
+                        if lep_pts[0]<15: continue
+                        if lep_pts[1]<15: continue
+                        if lep_pts[2]<12: continue
+                        if lep_pts[3]<12: continue
+                        # if ev["lep"+str(i)].DeltaR(ev["lep"+str(j)])<0.5: continue
+                        # if ev["lep"+str(k)].DeltaR(ev["lep"+str(l)])<0.5: continue
                         ev["allPairs"].append([str(i),str(j),str(k),str(l)])
 
     for ev in events.copy():
@@ -224,12 +259,14 @@ def main(category):
             if ev["Z1"].M()<40 and ev["Z2"].M()<40: toremove=True
             if ev["Z1"].M()<12 or ev["Z2"].M()<12: toremove=True
             if ev["Z1"].M()>120 or ev["Z2"].M()>120: toremove=True
+            if ev["Z1"].M()< ev["Z2"].M(): toremove=True
+            for (x,y) in list(itertools.combinations(pair, 2)):
+                if (ev["lep"+x]+ev["lep"+y]).M()<4: toremove=True
             if toremove: ev["allPairs"].remove(pair)
 
         if len(ev["allPairs"])==0: events.remove(ev)
 
     for ev in events:
-        # print (ev["allPairs"])
         closestMass = 4
         pair_index = -1
         for index,pair in enumerate(ev["allPairs"]):
@@ -261,10 +298,9 @@ def main(category):
     eff_H = 0
     eff_OS = 0
     for ev in events:
-        if ev["H"].M()>80  and ev["H"].M()<100: eff_Z+=1
-        if ev["H"].M()>120 and ev["H"].M()<130: eff_H+=1
-        if ev["H"].M()>200 and ev["H"].M()<501: eff_OS+=1
-        indices = ev["allPairs"][ev["pair_index"]].copy()
+        if ev["H"].M()>80  and ev["H"].M()<100: eff_Z+=weight
+        if ev["H"].M()>120 and ev["H"].M()<130: eff_H+=weight
+        if ev["H"].M()>200 and ev["H"].M()<501: eff_OS+=weight
     print ("Efficiency Z ", category, eff_Z, eff_H, eff_OS)
 
     hists['cutflow_norm'] = hists['cutflow'].Clone('cutflow_norm')
@@ -281,6 +317,6 @@ def main(category):
 
 if __name__:
     # main(category = "4Lep")
-    # main(category = "4Muo")
-    # main(category = "4Ele")
-    main(category = "2M2E")
+    main(category = "4Muo")
+    main(category = "4Ele")
+    # main(category = "2M2E")
