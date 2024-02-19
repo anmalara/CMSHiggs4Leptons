@@ -1,4 +1,5 @@
-import ROOT
+import os, ROOT
+
 # to be used to avoid display intermediate plotting results
 # ROOT.gROOT.SetBatch(ROOT.kTRUE)
 
@@ -21,7 +22,15 @@ def invariantmass4l(tree, i, j, k, l):
     return mass
 
 
-def savehisto(outputfile, histo, histoname, logy=False, extraname="", extension="pdf"):
+def savehisto(
+    outputfile,
+    histo,
+    histoname,
+    logy=False,
+    extraname="",
+    extension="pdf",
+    outputdir="./",
+):
     """
     Draw histo
     """
@@ -34,7 +43,8 @@ def savehisto(outputfile, histo, histoname, logy=False, extraname="", extension=
     c.SetLogy(logy)
     if not logy:
         extraname += "_nolog"
-    c.SaveAs("pdfs_data/"+histoname+extraname+"."+extension)
+    os.makedirs(outputdir, exist_ok=True)
+    c.SaveAs(outputdir + "/" + histoname + extraname + "." + extension)
     outputfile.cd()
     c.Write()
     c.Close()
