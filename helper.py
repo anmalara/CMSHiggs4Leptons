@@ -22,15 +22,7 @@ def invariantmass4l(tree, i, j, k, l):
     return mass
 
 
-def savehisto(
-    outputfile,
-    histo,
-    histoname,
-    logy=False,
-    extraname="",
-    extension="pdf",
-    outputdir="./",
-):
+def savehisto(outputfile, histo, histoname, logy=False, extraname="", extension="pdf", outputdir="./"):
     """
     Draw histo
     """
